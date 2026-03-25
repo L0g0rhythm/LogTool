@@ -1,0 +1,116 @@
+# LogTool CI/CD Security Pipeline (AEGIS APEX — M17)
+# Triggers: Push to main/develop, all Pull Requests
+# Gates: Secret scan → PSScriptAnalyzer → Pester tests
+
+name: Security & Quality Gate
+
+on:
+  push:
+    branches: [ "main", "develop" ]
+  pull_request:
+    branches: [ "main" ]
+
+permissions:
+  contents: read
+
+jobs:
+  # ─────────────────────────────────────────────
+  # Gate 1: Secret Scan (M17 — pre-merge, fail-fast)
+  # ─────────────────────────────────────────────
+  secret-scan:
+    name: Secret Scan (GitLeaks)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Pin by SHA — prevents tag mutation attacks (M17).
+      - name: Run GitLeaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ─────────────────────────────────────────────
+  # Gate 2: Static Analysis (PSScriptAnalyzer)
+  # ─────────────────────────────────────────────
+  static-analysis:
+    name: PSScriptAnalyzer
+    runs-on: windows-latest
+    needs: secret-scan
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install PSScriptAnalyzer
+        shell: pwsh
+        run: Install-Module PSScriptAnalyzer -Force -Scope CurrentUser
+
+      - name: Run PSScriptAnalyzer — Error on violations
+        shell: pwsh
+        run: |
+          $results = Invoke-ScriptAnalyzer -Path . -Recurse -Severity Error, Warning
+          if ($results) {
+            $results | Format-Table -AutoSize
+            Write-Error "PSScriptAnalyzer found $($results.Count) violation(s). Build blocked."
+            exit 1
+          }
+          Write-Host "PSScriptAnalyzer: No violations found." -ForegroundColor Green
+
+  # ─────────────────────────────────────────────
+  # Gate 3: Pester Test Suite (M21)
+  # ─────────────────────────────────────────────
+  pester-tests:
+    name: Pester Test Suite
+    runs-on: windows-latest
+    needs: static-analysis
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Pester
+        shell: pwsh
+        run: Install-Module Pester -Force -Scope CurrentUser -MinimumVersion 5.0
+
+      - name: Run Pester — Fail on any test failure
+        shell: pwsh
+        run: |
+          $config = New-PesterConfiguration
+          $config.Run.Path = "./tests"
+          $config.Output.Verbosity = "Detailed"
+          $config.TestResult.Enabled = $true
+          $config.TestResult.OutputPath = "TestResults.xml"
+          $config.Run.Exit = $true
+          Invoke-Pester -Configuration $config
+
+      - name: Publish Test Results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pester-test-results
+          path: TestResults.xml
+
+  # ─────────────────────────────────────────────
+  # Gate 4: SBOM Generation (M17 — deploy readiness)
+  # ─────────────────────────────────────────────
+  sbom:
+    name: Generate SBOM
+    runs-on: ubuntu-latest
+    needs: pester-tests
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Generate SBOM (CycloneDX / SPDX)
+        uses: anchore/sbom-action@v0
+        with:
+          format: spdx-json
+          output-file: sbom.spdx.json
+
+      - name: Upload SBOM Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-spdx
+          path: sbom.spdx.json

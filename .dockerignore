@@ -1,0 +1,25 @@
+# LogTool v28.1.3 - Rigorous DockerIgnore (Mirroring .gitignore)
+
+# Prevent diagnostic leakage into images
+reports/
+core/shared/modules/events.jsonl
+*.old
+*.zip
+*.html
+*.sha256
+
+# Infrastructure
+.git/
+.github/
+.vscode/
+.history/
+.gemini/
+
+# Temporary & Logs
+*.log
+*.tmp
+*.bak
+
+# Testing
+tests/
+*.pester-results.xml
