@@ -72,7 +72,10 @@ jobs:
       - name: Side-load Pester 3.4.0 and Run Tests
         shell: pwsh
         run: |
-          # Use local side-loading to bypass platform version pollution (M17 Isolation)
+          # Ensure destination exists (M17 Isolation Infrastructure)
+          if (-not (Test-Path "./pester_legacy")) { New-Item -ItemType Directory -Path "./pester_legacy" -Force }
+          
+          # Use local side-loading to bypass platform version pollution
           Save-Module -Name Pester -RequiredVersion 3.4.0 -Path "./pester_legacy" -ErrorAction SilentlyContinue
           
           # Force absolute path import to break Pester 5.x shadowing
