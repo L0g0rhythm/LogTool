@@ -1,4 +1,4 @@
-# LogTool CI/CD Security Pipeline (AEGIS APEX — M17)
+﻿# LogTool CI/CD Security Pipeline (AEGIS APEX — M17)
 # Triggers: Push to main/develop, all Pull Requests
 # Gates: Secret scan → PSScriptAnalyzer → Pester tests
 
@@ -120,6 +120,7 @@ jobs:
         with:
           name: sbom-spdx
           path: sbom.spdx.json
+
 
 
 
