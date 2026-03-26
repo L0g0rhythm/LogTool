@@ -92,6 +92,7 @@ function Get-LocalizedString {
 
 function Write-Status {
     [CmdletBinding()]
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSAvoidUsingWriteHost", "")]
     param([string]$Message, [string]$Level = "INFO", [int]$Indent = 0)
     # Use curated color palette to ensure high visibility and professional aesthetics.
     $c = switch($Level) { 
@@ -106,6 +107,7 @@ function Write-Status {
 
 function Write-SectionHeader {
     [CmdletBinding()]
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSAvoidUsingWriteHost", "")]
     param([string]$Title)
     # Blue background highlights major operation boundaries for improved UX.
     Write-Host "`n=== $Title ===`n" -ForegroundColor White -BackgroundColor Blue
@@ -175,11 +177,5 @@ function Get-ToolConfiguration {
     return $config
 }
 
-function Get-LocalizedStrings {
-    [CmdletBinding()]
-    param([Parameter(Mandatory = $true)][string]$Language)
-    return Get-LocalizedString -Language $Language
-}
-
-Export-ModuleMember -Function Get-LocalizedString, Get-LocalizedStrings, Write-Status, Write-SectionHeader, Resolve-SafePathPart, Assert-PathWithinBoundary, Write-AuditLog, Initialize-SystemEnvironment, Get-ToolConfiguration
+Export-ModuleMember -Function Get-LocalizedString, Write-Status, Write-SectionHeader, Resolve-SafePathPart, Assert-PathWithinBoundary, Write-AuditLog, Initialize-SystemEnvironment, Get-ToolConfiguration
 

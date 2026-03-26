@@ -86,7 +86,10 @@ function Invoke-LogAnalysis {
         Write-Status -Level INFO -Message $LocalizedStrings.AvailableArchives -Indent 0
 
         $i = 0
-        $show = { param($i, $n) Write-Host (" {0,3}: {1}" -f $i, $n) }
+        $show = { 
+            [Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSAvoidUsingWriteHost", "")]
+            param($i, $n) Write-Host (" {0,3}: {1}" -f $i, $n) 
+        }
         $availableArchives | ForEach-Object {
             $displayName = "$(Split-Path $_.DirectoryName -Leaf)\$($_.Name)"
             &$show (++$i) $displayName
@@ -189,14 +192,14 @@ function Invoke-LogAnalysis {
         $foundCriticalEvents = [System.Collections.Generic.List[object]]::new()
         $foundKeywordEvents  = [System.Collections.Generic.List[object]]::new()
 
-        foreach ($event in $allEvents) {
-            if ($criticalEventIds.Contains($event.Id)) {
-                [void]$foundCriticalEvents.Add($event)
+        foreach ($logEvent in $allEvents) {
+            if ($criticalEventIds.Contains($logEvent.Id)) {
+                [void]$foundCriticalEvents.Add($logEvent)
             }
 
-            if ($event.Message -match $regexPattern) {
-                $event | Add-Member -MemberType NoteProperty -Name 'MatchedKeyword' -Value $Matches[0] -Force
-                [void]$foundKeywordEvents.Add($event)
+            if ($logEvent.Message -match $regexPattern) {
+                $logEvent | Add-Member -MemberType NoteProperty -Name 'MatchedKeyword' -Value $Matches[0] -Force
+                [void]$foundKeywordEvents.Add($logEvent)
             }
         }
 

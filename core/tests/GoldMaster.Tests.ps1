@@ -10,6 +10,7 @@ Import-Module (Join-Path $Root "core/backend/modules/Lifecycle.psm1") -Force
 Import-Module (Join-Path $Root "core/frontend/modules/Analysis.psm1") -Force
 
 Describe "LogTool v28.1.7: GOLD MASTER (Purified)" {
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSAvoidUsingWriteHost", "")]
     $T = (New-Item -ItemType Directory -Path (Join-Path $env:TEMP "lt_gm_purified") -Force).FullName
     $ReportsDir = New-Item -ItemType Directory -Path (Join-Path $T "reports") -Force
     
@@ -28,8 +29,14 @@ Describe "LogTool v28.1.7: GOLD MASTER (Purified)" {
 
     It "VALIDATES: Collection Cycle" {
         Mock Get-WinEvent -ModuleName Collection { return @([pscustomobject]@{ Id=1; Message="OK"; TimeCreated=Get-Date; ProviderName="M" }) }
-        Mock Export-Clixml -ModuleName Collection { param($Path, $InputObject); }
-        Mock Compress-Archive -ModuleName Collection { param($Path, $DestinationPath); Set-Content $DestinationPath "z" | Out-Null }
+        Mock Export-Clixml -ModuleName Collection { 
+            [Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSReviewUnusedParameter", "")]
+            param($Path, $InputObject); 
+        }
+        Mock Compress-Archive -ModuleName Collection { 
+            [Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSReviewUnusedParameter", "")]
+            param($Path, $DestinationPath); Set-Content $DestinationPath "z" | Out-Null 
+        }
         
         $zip = Invoke-LogCollection -Configuration $Cfg -ScriptRoot $T -LocalizedStrings $St
         $zip | Should Not be $null
@@ -42,6 +49,7 @@ Describe "LogTool v28.1.7: GOLD MASTER (Purified)" {
         Set-Content $testZip "z" | Out-Null
         
         Mock Expand-Archive -ModuleName Analysis { 
+            [Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSReviewUnusedParameter", "")]
             param($Path, $DestinationPath); 
             $dest = New-Item -ItemType Directory -Path $DestinationPath -Force
             $obj = [pscustomobject]@{Id=1;Message="SAFE";TimeCreated=Get-Date;ProviderName="M";Provider="M"}

@@ -23,7 +23,7 @@ param(
     [string]$Language,
 
     [Parameter(Mandatory = $false)]
-    [switch]$AutoReport = $true
+    $AutoReport = $true
 )
 
 # Portable ScriptRoot resolution ensures reliability across different execution contexts.
@@ -43,7 +43,6 @@ try {
     $config = Get-ToolConfiguration -ScriptRoot $ScriptRoot
     
     if (-not $Language) { $Language = $config.ToolSettings.Language }
-    $localizedStrings = Get-LocalizedStrings -Language $Language
 
     switch ($Command) {
         'Collect' {
