@@ -1,4 +1,4 @@
-# Module: Reporting.psm1 v28.1.7
+﻿# Module: Reporting.psm1 v28.1.7
 #
 
 #region Module Setup
@@ -198,4 +198,5 @@ function Show-ConsoleReport {
 
 Export-ModuleMember -Function Invoke-HtmlReport, Show-ConsoleReport
 #endregion
+
 

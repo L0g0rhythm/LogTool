@@ -1,4 +1,4 @@
-#
+﻿#
 # Module: Analysis.psm1 v28.1.7
 #
 
@@ -251,5 +251,6 @@ function Invoke-LogAnalysis {
 #endregion
 
 Export-ModuleMember -Function Invoke-LogAnalysis, Assert-ArchiveIntegrity
+
 
 

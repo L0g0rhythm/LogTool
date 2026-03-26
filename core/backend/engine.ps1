@@ -1,4 +1,4 @@
-# LogTool Backend Engine v28.1.7 (SRP Max)
+﻿# LogTool Backend Engine v28.1.7 (SRP Max)
 #
 
 [CmdletBinding()]
@@ -44,3 +44,4 @@ catch {
     Write-Status -Level ERROR -Message "BACKEND CRITICAL: $($_.Exception.Message)"
     exit 1
 }
+

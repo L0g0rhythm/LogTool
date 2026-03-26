@@ -1,4 +1,4 @@
-# LogTool Frontend Engine v28.1.7 (SRP Max)
+﻿# LogTool Frontend Engine v28.1.7 (SRP Max)
 #
 
 [CmdletBinding()]
@@ -76,3 +76,4 @@ catch {
     Write-Status -Level ERROR -Message "FRONTEND CRITICAL: $($_.Exception.Message)"
     exit 1
 }
+

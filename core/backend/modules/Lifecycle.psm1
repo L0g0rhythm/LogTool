@@ -1,4 +1,4 @@
-#
+﻿#
 # Module: Lifecycle.psm1 v28.1.7 (SRP Max)
 #
 
@@ -92,4 +92,5 @@ function Invoke-ArchiveCleanup {
 #endregion
 
 Export-ModuleMember -Function Invoke-ArchiveCleanup
+
 

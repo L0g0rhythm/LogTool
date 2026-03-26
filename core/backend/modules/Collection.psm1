@@ -1,4 +1,4 @@
-#
+﻿#
 # Module: Collection.psm1 v28.1.7 (Gold Master)
 #
 
@@ -67,4 +67,5 @@ function Invoke-LogCollection {
 }
 
 Export-ModuleMember -Function Invoke-LogCollection
+
 

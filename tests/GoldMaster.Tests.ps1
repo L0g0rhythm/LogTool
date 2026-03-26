@@ -1,4 +1,4 @@
-#
+﻿#
 # LogTool v28.1.7: GOLD MASTER UNIFIED TESTS
 # Framework: Pester 3.4.0
 #
@@ -81,6 +81,7 @@ Describe "LogTool v28.1.7: GOLD MASTER (Purified)" {
     # Manual anchoring of variables to satisfy PSScriptAnalyzer (M21 conformance).
     $null = $T; $null = $ReportsDir; $null = $St; $null = $Cfg
 }
+
 
 
 
