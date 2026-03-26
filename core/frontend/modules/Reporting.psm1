@@ -1,4 +1,4 @@
-# Module: Reporting.psm1 v28.1.7 (AEGIS APEX Hardened)
+# Module: Reporting.psm1 v28.1.7
 #
 
 #region Module Setup

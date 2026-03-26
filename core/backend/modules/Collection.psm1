@@ -55,7 +55,7 @@ function Invoke-LogCollection {
     # Archiving the content of the temporary directory ensures a clean root structure in the ZIP.
     Compress-Archive -Path $filesToArchive -DestinationPath $archivePath -Force
     
-    # AUD-SEC-01: SHA-256 sidecar manifest allows for post-collection integrity verification (AEGIS requirement).
+    # AUD-SEC-01: SHA-256 sidecar manifest allows for post-collection integrity verification.
     $hash = (Get-FileHash -Path $archivePath -Algorithm SHA256).Hash
     $hash | Out-File -FilePath ($archivePath + ".sha256") -Force -Encoding ASCII
     

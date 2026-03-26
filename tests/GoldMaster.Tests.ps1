@@ -1,6 +1,6 @@
-﻿#
+#
 # LogTool v28.1.7: GOLD MASTER UNIFIED TESTS
-# Framework: Pester 3.4.0 (AEGIS Purified)
+# Framework: Pester 3.4.0
 #
 
 Import-Module Pester -RequiredVersion 3.4.0 -Force

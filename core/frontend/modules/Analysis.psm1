@@ -1,5 +1,5 @@
-﻿#
-# Module: Analysis.psm1 v28.1.7 (AEGIS APEX Hardened)
+#
+# Module: Analysis.psm1 v28.1.7
 #
 
 #region Private Helpers

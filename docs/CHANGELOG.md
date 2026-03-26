@@ -31,7 +31,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## [28.0.0] — 2026-03-25
 
-### Security (AEGIS APEX Hardening — L0/L1 Audit)
+### Security (Hardening and Audit compliance)
 
 - **[CRITICAL FIX — ISSUE-001]** `Import-Clixml` deserialization now protected by SHA-256 integrity manifest. `Invoke-LogCollection` generates a `.sha256` sidecar file on every archive. `Invoke-LogAnalysis` calls `Assert-ArchiveIntegrity` before extraction — fail-closed on hash mismatch.
 - **[CRITICAL FIX — ISSUE-002]** `ArchivePath` parameter now confined to the `reports/` boundary via `Assert-PathWithinBoundary`.
