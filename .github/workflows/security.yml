@@ -70,7 +70,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Side-load Pester 3.4.0 and Run Tests
-        shell: pwsh
+        shell: powershell
         run: |
           # Ensure destination exists (M17 Isolation Infrastructure)
           if (-not (Test-Path "./pester_legacy")) { New-Item -ItemType Directory -Path "./pester_legacy" -Force }
@@ -120,6 +120,7 @@ jobs:
         with:
           name: sbom-spdx
           path: sbom.spdx.json
+
 
 
 
