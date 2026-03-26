@@ -1,4 +1,4 @@
-#
+﻿#
 # Module: Shared.psm1 v28.1.7 (SSOT Hardened)
 #
 
@@ -178,4 +178,5 @@ function Get-ToolConfiguration {
 }
 
 Export-ModuleMember -Function Get-LocalizedString, Write-Status, Write-SectionHeader, Resolve-SafePathPart, Assert-PathWithinBoundary, Write-AuditLog, Initialize-SystemEnvironment, Get-ToolConfiguration
+
 

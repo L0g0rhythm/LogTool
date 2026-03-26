@@ -1,4 +1,4 @@
-#
+﻿#
 # Module: Analysis.psm1 v28.1.7 (AEGIS APEX Hardened)
 #
 
@@ -53,6 +53,7 @@ function Assert-ArchiveIntegrity {
 
 function Invoke-LogAnalysis {
     [CmdletBinding()]
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSAvoidUsingWriteHost", "")]
     [OutputType([PSCustomObject])]
     param(
         [Parameter(Mandatory = $true)]$Configuration,
@@ -250,4 +251,5 @@ function Invoke-LogAnalysis {
 #endregion
 
 Export-ModuleMember -Function Invoke-LogAnalysis, Assert-ArchiveIntegrity
+
 

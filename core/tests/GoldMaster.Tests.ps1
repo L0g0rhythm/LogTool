@@ -1,4 +1,4 @@
-#
+﻿#
 # LogTool v28.1.7: GOLD MASTER UNIFIED TESTS
 # Framework: Pester 3.4.0 (AEGIS Purified)
 #
@@ -30,12 +30,12 @@ Describe "LogTool v28.1.7: GOLD MASTER (Purified)" {
     It "VALIDATES: Collection Cycle" {
         Mock Get-WinEvent -ModuleName Collection { return @([pscustomobject]@{ Id=1; Message="OK"; TimeCreated=Get-Date; ProviderName="M" }) }
         Mock Export-Clixml -ModuleName Collection { 
-            [Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSReviewUnusedParameter", "")]
             param($Path, $InputObject); 
+            $null = $Path; $null = $InputObject
         }
         Mock Compress-Archive -ModuleName Collection { 
-            [Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSReviewUnusedParameter", "")]
-            param($Path, $DestinationPath); Set-Content $DestinationPath "z" | Out-Null 
+            param($Path, $DestinationPath); 
+            $null = $Path; Set-Content $DestinationPath "z" | Out-Null 
         }
         
         $zip = Invoke-LogCollection -Configuration $Cfg -ScriptRoot $T -LocalizedStrings $St
@@ -49,18 +49,18 @@ Describe "LogTool v28.1.7: GOLD MASTER (Purified)" {
         Set-Content $testZip "z" | Out-Null
         
         Mock Expand-Archive -ModuleName Analysis { 
-            [Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSReviewUnusedParameter", "")]
             param($Path, $DestinationPath); 
+            $null = $Path
             $dest = New-Item -ItemType Directory -Path $DestinationPath -Force
             $obj = [pscustomobject]@{Id=1;Message="SAFE";TimeCreated=Get-Date;ProviderName="M";Provider="M"}
             $obj | Export-Clixml (Join-Path $dest.FullName "S.xml")
-            Write-Host "[MOCK] Exported S.xml to $($dest.FullName)"
+            Write-Output "[MOCK] Exported S.xml to $($dest.FullName)"
         }
         Mock Assert-ArchiveIntegrity -ModuleName Analysis { return }
         
         $res = Invoke-LogAnalysis -Configuration $Cfg -ArchivePath $testZip -Quiet -ScriptRoot $T -LocalizedStrings $St
-        if ($null -eq $res) { Write-Host "[DEBUG] Analysis result is NULL" }
-        else { Write-Host "[DEBUG] Analysis result found. TotalEvents: $($res.TotalEvents)" }
+        if ($null -eq $res) { Write-Output "[DEBUG] Analysis result is NULL" }
+        else { Write-Output "[DEBUG] Analysis result found. TotalEvents: $($res.TotalEvents)" }
         
         $res | Should Not be $null
         $res.TotalEvents | Should be 1
@@ -75,4 +75,5 @@ Describe "LogTool v28.1.7: GOLD MASTER (Purified)" {
         (Get-ChildItem -Path $ReportsDir.FullName -Filter *.zip).Count | Should be 1
     }
 }
+
 

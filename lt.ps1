@@ -1,4 +1,4 @@
-# LogTool Professional Launcher v28.1.7 (SSOT Orchestrator)
+﻿# LogTool Professional Launcher v28.1.7 (SSOT Orchestrator)
 #
 
 [CmdletBinding()]
@@ -93,3 +93,4 @@ catch {
     Write-Status -Level ERROR -Message "ORCHESTRATION FAILURE: $($_.Exception.Message)"
     exit 1
 }
+
