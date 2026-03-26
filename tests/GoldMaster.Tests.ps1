@@ -1,4 +1,4 @@
-#
+﻿#
 # LogTool v28.1.7: GOLD MASTER UNIFIED TESTS
 # Framework: Pester 5.7.1 (AEGIS Purified)
 #
@@ -82,3 +82,4 @@ Describe "LogTool v28.1.7: GOLD MASTER (Purified)" {
         if (Test-Path $T) { Remove-Item -Path $T -Recurse -Force -ErrorAction SilentlyContinue }
     }
 }
+
