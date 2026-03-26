@@ -11,6 +11,7 @@ Import-Module (Join-Path $Root "core/frontend/modules/Analysis.psm1") -Force
 
 Describe "LogTool v28.1.7: GOLD MASTER (Purified)" {
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSAvoidUsingWriteHost", "")]
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSUseDeclaredVarsMoreThanAssignments", "")]
     BeforeAll {
         $T = (New-Item -ItemType Directory -Path (Join-Path $env:TEMP "lt_gm_purified_$([guid]::NewGuid())") -Force).FullName
         $ReportsDir = New-Item -ItemType Directory -Path (Join-Path $T "reports") -Force
