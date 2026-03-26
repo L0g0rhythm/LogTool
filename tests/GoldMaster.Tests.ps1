@@ -3,7 +3,7 @@
 # Framework: Pester 3.4.0 (AEGIS Purified)
 #
 
-$Root = Resolve-Path "."
+$Root = Split-Path -Parent $PSScriptRoot
 Import-Module (Join-Path $Root "core/shared/modules/Shared.psm1") -Force
 Import-Module (Join-Path $Root "core/backend/modules/Collection.psm1") -Force
 Import-Module (Join-Path $Root "core/backend/modules/Lifecycle.psm1") -Force
@@ -75,5 +75,6 @@ Describe "LogTool v28.1.7: GOLD MASTER (Purified)" {
         (Get-ChildItem -Path $ReportsDir.FullName -Filter *.zip).Count | Should be 1
     }
 }
+
 
 
