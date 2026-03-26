@@ -1,20 +1,17 @@
 #
-# Module: Lifecycle.psm1 v28.0 (SRP Max)
-# Description: Professional archive maintenance and lifecycle enforcement.
-#              SRP: Isolated from core collection logic for domain purity.
-# Author: L0g0rhythm
+# Module: Lifecycle.psm1 v28.1.7 (SRP Max)
 #
 
 #region Private Helpers
 
-    # DRY helper for secure archive removal and manifest cleanup.
-    function Remove-ArchiveFile {
-    [CmdletBinding()]
+function Remove-ArchiveFile {
+    [CmdletBinding(SupportsShouldProcess = $true)]
     param(
         [Parameter(Mandatory = $true)][System.IO.FileInfo]$File,
         [Parameter(Mandatory = $true)][string]$ReasonMessage,
         [Parameter(Mandatory = $true)][psobject]$Configuration
     )
+    # Encapsulated file removal ensures that sidecar manifest (.sha256) is never orphaned.
     try {
         Write-Status -Level WARN -Message $ReasonMessage -Indent 4
         Remove-Item -LiteralPath $File.FullName -Force -ErrorAction Stop
@@ -35,15 +32,14 @@
 
 #region Public Functions
 
-    # Enforcement engine for count-based and age-based archival rotation policies.
-    function Invoke-ArchiveCleanup {
+function Invoke-ArchiveCleanup {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]$Configuration,
         [Parameter(Mandatory = $true)]$ScriptRoot,
         [Parameter(Mandatory = $true)]$LocalizedStrings
     )
-
+    # Policy Enforcement: Early exit if lifecycle management is disabled in SSOT config.
     $config = $Configuration.LifecycleConfig
     if (-not $config.Enabled) { return }
 
@@ -51,6 +47,7 @@
     $reportsDir = Join-Path -Path $ScriptRoot -ChildPath "reports"
     if (-not (Test-Path $reportsDir)) { return }
 
+    # Recursive discovery allows for multi-tenant (Machine/User) directory structure support.
     $allArchives = Get-ChildItem -Path $reportsDir -Filter "*.zip" -Recurse
     if (-not $allArchives) { return }
 
@@ -59,7 +56,7 @@
     $archivesToKeep = [System.Collections.Generic.List[System.IO.FileInfo]]::new()
 
     foreach ($archive in $allArchives) {
-        # Validates LastWriteTime to ensure integrity across filesystem sync operations.
+        # Age-based retention policy: Purge archives older than MaxArchiveAgeDays.
         $ageDays = ($now - $archive.LastWriteTime).TotalDays
 
         if ($ageDays -gt $config.MaxArchiveAgeDays) {
@@ -73,7 +70,9 @@
         }
     }
 
+    # Count-based retention policy: Ensure only the most recent N archives are preserved.
     if ($archivesToKeep.Count -gt $config.MaxArchivesToKeep) {
+        # O(n log n) sort is handled by native .NET implementations for performance.
         $sortedToKeep = $archivesToKeep | Sort-Object LastWriteTime -Descending
         $toDelete = $sortedToKeep | Select-Object -Skip $config.MaxArchivesToKeep
 
@@ -93,3 +92,4 @@
 #endregion
 
 Export-ModuleMember -Function Invoke-ArchiveCleanup
+

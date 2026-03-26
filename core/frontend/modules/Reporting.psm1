@@ -1,7 +1,5 @@
-# Module: Reporting.psm1 v28.1.3 (AEGIS APEX Hardened)
-# Description: Unified presentation engine for HTML interactive reports and console dashboards.
-#              Migrated to Streaming I/O (AUD-PERF-02) for O(n) memory efficiency.
-# Author: L0g0rhythm
+# Module: Reporting.psm1 v28.1.7 (AEGIS APEX Hardened)
+#
 
 #region Module Setup
 Add-Type -AssemblyName System.Web
@@ -12,6 +10,7 @@ Add-Type -AssemblyName System.Web
 function Get-ReportCss {
     [CmdletBinding()]
     param()
+    # Premium CSS design tokens based on HSL-tailored professional palettes.
     return @"
 <style>
     :root {
@@ -19,7 +18,7 @@ function Get-ReportCss {
         --font-mono: 'Courier New', monospace;
         --color-background: #ffffff;
         --color-text: #212529;
-        --color-primary: #0a2b5e;
+        --color-primary: #0a214d;
         --color-border: #dee2e6;
         --color-header-bg: #f1f3f5;
         --color-critical: #c92a2a;
@@ -27,14 +26,15 @@ function Get-ReportCss {
         --color-subtle-bg: #f8f9fa;
     }
     body { font-family: var(--font-serif); background-color: #e9ecef; color: var(--color-text); margin: 0; padding: 1rem; line-height: 1.6; }
-    .page { width: 210mm; min-height: 297mm; padding: 2cm; margin: 1cm auto; border: 1px solid #ccc; background: var(--color-background); box-shadow: 0 0 10px rgba(0, 0, 0, 0.15); box-sizing: border-box; }
+    .page { width: 210mm; min-height: 297mm; padding: 2cm; margin: 1cm auto; border: 1px solid #ccc; background: var(--color-background); box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1); box-sizing: border-box; }
     h1, h2 { color: var(--color-primary); font-weight: normal; margin-top: 1.5em; margin-bottom: 0.8em; border-bottom: 2px solid var(--color-primary); padding-bottom: 8px; }
-    h1 { font-size: 26pt; }
+    h1 { font-size: 26pt; letter-spacing: -0.5px; }
     h2 { font-size: 18pt; border-bottom-width: 1px; }
     .report-header p { margin: 0.4em 0; font-size: 11pt; }
     .verdict-critical { color: var(--color-critical); font-weight: bold; }
     .verdict-keyword  { color: var(--color-keyword);  font-weight: bold; }
-    .filter-input { width: 100%; padding: 8px 12px; margin-bottom: 1rem; border: 1px solid var(--color-border); border-radius: 4px; font-family: var(--font-mono); font-size: 10pt; box-sizing: border-box; }
+    .filter-input { width: 100%; padding: 10px 14px; margin-bottom: 1rem; border: 1px solid var(--color-border); border-radius: 6px; font-family: var(--font-mono); font-size: 10pt; box-sizing: border-box; transition: border-color 0.2s; }
+    .filter-input:focus { border-color: var(--color-primary); outline: none; }
     table { border-collapse: collapse; width: 100%; margin-top: 1rem; font-size: 9pt; }
     th, td { border: 1px solid var(--color-border); padding: 10px 14px; text-align: left; vertical-align: middle; }
     th { background-color: var(--color-header-bg); font-weight: bold; }
@@ -42,8 +42,9 @@ function Get-ReportCss {
     .details-row { display: none; background-color: var(--color-subtle-bg); }
     .details-row td { padding: 0; }
     .details-row pre { margin: 0; padding: 12px 16px; font-size: 8.5pt; white-space: pre-wrap; word-wrap: break-word; }
-    .details-button { cursor: pointer; border: 1px solid var(--color-border); border-radius: 4px; padding: 2px 8px; font-size: 8pt; background: #fff; }
-    .keyword-highlight { background-color: #ffe066; font-weight: bold; }
+    .details-button { cursor: pointer; border: 1px solid var(--color-border); border-radius: 4px; padding: 4px 12px; font-size: 8pt; background: #fff; transition: background 0.2s; }
+    .details-button:hover { background: var(--color-subtle-bg); }
+    .keyword-highlight { background-color: #fff9db; border: 1px solid #fab005; padding: 2px 4px; border-radius: 3px; font-weight: bold; }
     .footer { text-align: center; margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--color-border); font-size: 9pt; color: #6c757d; }
     @media print {
         body { background: none; padding: 0; }
@@ -58,6 +59,7 @@ function Get-ReportCss {
 function Get-ReportJavaScript {
     [CmdletBinding()]
     param([hashtable]$LocalizedStrings)
+    # Lightweight vanilla JS maintains zero-dependency posture for portable HTML reports.
     return @"
 <script>
     function filterTable(inputId, tableId) {
@@ -67,7 +69,8 @@ function Get-ReportJavaScript {
         const rows = tbody.getElementsByTagName('tr');
         for (let i = 0; i < rows.length; i++) {
             if (rows[i].classList.contains('details-row')) continue;
-            const visible = (rows[i].textContent || rows[i].innerText).toUpperCase().indexOf(filter) > -1;
+            const text = (rows[i].textContent || rows[i].innerText).toUpperCase();
+            const visible = text.indexOf(filter) > -1;
             rows[i].style.display = visible ? '' : 'none';
             const next = rows[i].nextElementSibling;
             if (next && next.classList.contains('details-row')) next.style.display = 'none';
@@ -97,8 +100,7 @@ function Get-ReportJavaScript {
 #region Public Functions
 
 function Invoke-HtmlReport {
-    # AUD-PERF-02: Generates HTML report using direct streaming to OutputPath.
-    # Prevents OOM by avoiding giant string concatenation in PowerShell heap.
+    # AUD-PERF-02: Direct streaming writes to OutputPath prevent OOM by avoiding giant string pools.
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)][psobject]$ReportData,
@@ -108,48 +110,45 @@ function Invoke-HtmlReport {
 
     $st = [System.IO.StreamWriter]::new($OutputPath, $false, [System.Text.Encoding]::UTF8)
     try {
-        $st.AutoFlush = $true
+        $st.AutoFlush = $false
         
-        # HTML Header
         $st.WriteLine('<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">')
         $st.WriteLine("<title>$($LocalizedStrings.ReportTitle)</title>")
         $st.WriteLine((Get-ReportCss))
         $st.WriteLine('</head><body><div class="page">')
 
-        # Report Header
         $st.WriteLine("<h1>$($LocalizedStrings.ReportTitle)</h1>")
         $st.WriteLine('<div class="report-header">')
         $st.WriteLine("<p><strong>$($LocalizedStrings.AnalyzedArchiveLabel)</strong> $([System.Web.HttpUtility]::HtmlEncode($ReportData.ArchiveName))</p>")
         $st.WriteLine("<p><strong>$($LocalizedStrings.ReportGeneratedLabel)</strong> $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')</p>")
         $st.WriteLine('</div>')
 
-        # Executive Summary
         $st.WriteLine("<h2>$($LocalizedStrings.ExecutiveSummary)</h2>")
         $st.WriteLine('<div class="verdict">')
         $st.WriteLine("<p class='verdict-critical'><strong>$($LocalizedStrings.VerdictById)</strong> $($ReportData.VerdictById)</p>")
         $st.WriteLine("<p class='verdict-keyword'><strong>$($LocalizedStrings.VerdictByKeyword)</strong> $($ReportData.VerdictByKeyword)</p>")
         $st.WriteLine('</div>')
 
-        # Critical Events
         $st.WriteLine("<h2>$($LocalizedStrings.CriticalEventDetails)</h2>")
         if ($ReportData.CriticalEvents) {
             $st.WriteLine("<input type='text' id='criticalFilter' placeholder='$($LocalizedStrings.FilterCriticalEvents)' class='filter-input'>")
             $st.WriteLine("<table id='criticalTable'><thead><tr><th style='width:18%;'>Date/Time</th><th style='width:8%;'>Id</th><th style='width:20%;'>Provider</th><th>Message Summary</th><th style='width:12%;'>Details</th></tr></thead><tbody>")
             
             foreach ($ev in $ReportData.CriticalEvents) {
+                # Normalizing message content ensures consistent table rendering across diverse event schemas.
                 $msg = if ($null -ne $ev.Message) { $ev.Message } else { '' }
                 $first = [System.Web.HttpUtility]::HtmlEncode(($msg -split '\n')[0].Trim())
                 $full  = [System.Web.HttpUtility]::HtmlEncode($msg)
                 
-                $st.WriteLine("<tr><td>$($ev.TimeCreated.ToString('yyyy-MM-dd HH:mm:ss'))</td><td>$($ev.Id)</td><td>$([System.Web.HttpUtility]::HtmlEncode($ev.ProviderName))</td><td>$first</td><td><button class='details-button'>$($LocalizedStrings.DetailsButtonView)</button></td></tr>")
+                $st.WriteLine("<tr><td>$("{0:yyyy-MM-dd HH:mm:ss}" -f $ev.TimeCreated)</td><td>$($ev.Id)</td><td>$([System.Web.HttpUtility]::HtmlEncode($ev.ProviderName))</td><td>$first</td><td><button class='details-button'>$($LocalizedStrings.DetailsButtonView)</button></td></tr>")
                 $st.WriteLine("<tr class='details-row'><td colspan='5'><pre>$full</pre></td></tr>")
             }
             $st.WriteLine("</tbody></table>")
+            $st.Flush()
         } else {
             $st.WriteLine("<p>$($LocalizedStrings.NoCriticalEvents)</p>")
         }
 
-        # Keyword Events
         $st.WriteLine("<h2>$($LocalizedStrings.KeywordAlertDetails)</h2>")
         if ($ReportData.KeywordEvents) {
             $st.WriteLine("<input type='text' id='keywordFilter' placeholder='$($LocalizedStrings.FilterKeywordEvents)' class='filter-input'>")
@@ -158,19 +157,21 @@ function Invoke-HtmlReport {
             foreach ($ev in $ReportData.KeywordEvents) {
                 $encodedKw = [System.Web.HttpUtility]::HtmlEncode($ev.MatchedKeyword)
                 $msg = [System.Web.HttpUtility]::HtmlEncode(($ev.Message -split "\n")[0].Trim())
-                $st.WriteLine("<tr><td>$($ev.TimeCreated.ToString('yyyy-MM-dd HH:mm:ss'))</td><td>$($ev.Id)</td><td>$([System.Web.HttpUtility]::HtmlEncode($ev.Provider))</td><td><span class='keyword-highlight'>$encodedKw</span></td><td>$msg</td></tr>")
+                $st.WriteLine("<tr><td>$("{0:yyyy-MM-dd HH:mm:ss}" -f $ev.TimeCreated)</td><td>$($ev.Id)</td><td>$([System.Web.HttpUtility]::HtmlEncode($ev.Provider))</td><td><span class='keyword-highlight'>$encodedKw</span></td><td>$msg</td></tr>")
             }
             $st.WriteLine("</tbody></table>")
+            $st.Flush()
         } else {
             $st.WriteLine("<p>$($LocalizedStrings.NoKeywordEventsFound)</p>")
         }
 
-        $st.WriteLine("</div>") # Close .page
+        $st.WriteLine("</div>") 
         $st.WriteLine("<div class='footer'><p>$($LocalizedStrings.FooterCopyright) <a href='https://github.com/L0g0rhythm/LogTool' target='_blank'>L0g0rhythm</a></p></div>")
         $st.WriteLine((Get-ReportJavaScript -LocalizedStrings $LocalizedStrings))
         $st.WriteLine("</body></html>")
     }
     finally {
+        # StreamWriter disposal prevents memory leaks and ensures all buffers are purged to disk.
         $st.Close()
         $st.Dispose()
     }
@@ -179,6 +180,7 @@ function Invoke-HtmlReport {
 function Show-ConsoleReport {
     [CmdletBinding()]
     param($Result, $Configuration, $LocalizedStrings)
+    # Compact console output allows for rapid triage without opening the full HTML report.
     $max = $Configuration.AnalysisConfig.MaxDetailItems
     Write-SectionHeader -Title $LocalizedStrings.DiagnosticReport
     $vColor = if ($Result.VerdictById -match 'ATTENTION|ATENC') { "Red" } else { "Green" }
@@ -194,5 +196,6 @@ function Show-ConsoleReport {
     }
 }
 
- Export-ModuleMember -Function Invoke-HtmlReport, Show-ConsoleReport
+Export-ModuleMember -Function Invoke-HtmlReport, Show-ConsoleReport
 #endregion
+

@@ -1,120 +1,96 @@
+# LogTool Professional Launcher v28.1.7 (SSOT Orchestrator)
 #
-# LogTool - Smart Launcher (lt.ps1) v23.1 (Secure & Refactored)
-#
+
 [CmdletBinding()]
 param(
-    [Parameter(Position=0, Mandatory=$true)]
-    [ValidateSet('collect', 'analyze', 'create-report', 'create-report-from')]
-    [string]$Command,
+    [Parameter(Position = 0, Mandatory = $false)]
+    [ValidateSet('Collect', 'Analyze', 'Report')]
+    [string]$Command = 'Collect',
 
-    [Parameter(Position=1, Mandatory=$false)]
-    [string]$Path,
+    [Parameter(Mandatory = $false)]
+    [string]$ArchivePath,
 
-    [Parameter(Mandatory=$false)]
+    [Parameter(Mandatory = $false)]
+    [string]$OutputPath,
+
+    [Parameter(Mandatory = $false)]
     [int[]]$IncludeEventId,
 
-    [Parameter(Mandatory=$false)]
-    [string]$Keyword
+    [Parameter(Mandatory = $false)]
+    [string]$Keyword,
+
+    [Parameter(Mandatory = $false)]
+    [string]$Language,
+
+    [Parameter(Mandatory = $false)]
+    [switch]$AutoReport = $true
 )
 
-#region Private Functions
-# Private helper function to centralize report path generation logic.
-function Get-IntelligentReportPath {
-    param(
-        [Parameter(Mandatory=$true)]
-        [System.IO.FileInfo]$ArchiveItem
-    )
-    process {
-        $reportFileName = "LogTool_Report_$(Get-Date -Format 'yyyy-MM-dd_HH-mm-ss').html"
-        return Join-Path -Path $ArchiveItem.DirectoryName -ChildPath $reportFileName
-    }
-}
-#endregion
-#region Module Importation
-$sharedModulePath = Join-Path -Path $PSScriptRoot -ChildPath "core\shared\modules\Shared.psm1"
-if (-not (Test-Path $sharedModulePath)) {
-    Write-Error "CRITICAL: Shared module not found at '$sharedModulePath'."
+# Portable ScriptRoot resolution ensures reliability across different execution contexts.
+$ScriptRoot = $PSScriptRoot
+if (-not $ScriptRoot) { $ScriptRoot = Get-Location }
+
+# Shared dependency loading is centralized to maintain DR (Don't Repeat Yourself) principles.
+$sharedModule = Join-Path -Path $ScriptRoot -ChildPath "core\shared\modules\Shared.psm1"
+if (-not (Test-Path $sharedModule)) {
+    Write-Error "CRITICAL: Shared module not found at '$sharedModule'. Repository integrity compromised."
     exit 1
 }
-Import-Module -Name $sharedModulePath -Force
-#endregion
-
-#region Pre-Flight: Environment & Configuration
-try {
-    # AUD-03: Separate environment prep from runtime retrieval.
-    Initialize-SystemEnvironment -ScriptRoot $PSScriptRoot
-    $Configuration = Get-ToolConfiguration -ScriptRoot $PSScriptRoot
-    $LocalizedStrings = Get-LocalizedStrings -Language "pt-BR"
-} catch {
-    Write-Error "A critical error occurred during pre-flight environment setup or configuration loading: $($_.Exception.Message)"
-    exit 1
-}
-#endregion
+Import-Module $sharedModule -Force
 
 try {
-    # Engine orchestration based on domain (M28 SRP Max)
-    $enginePath = if ($Command -eq 'collect') { "backend\engine.ps1" } else { "frontend\engine.ps1" }
-    $engineScriptPath = Join-Path -Path $PSScriptRoot -ChildPath "core\$enginePath"
+    # SSOT: Centralized configuration is the source of truth for all domain parameters.
+    $config = Get-ToolConfiguration -ScriptRoot $ScriptRoot
+    
+    if (-not $Language) { $Language = $config.ToolSettings.Language }
+    $localizedStrings = Get-LocalizedStrings -Language $Language
 
-    if (-not (Test-Path -LiteralPath $engineScriptPath -PathType Leaf)) {
-        throw "Domain engine '$enginePath' not found in 'core\' directory."
-    }
-
-    # Prepare parameters to pass to the engine
-    $engineParams = @{}
-    $PSBoundParameters.GetEnumerator() | ForEach-Object {
-        $engineParams[$_.Key] = $_.Value
-    }
-
-    $engineParams.Remove('Command')
-    if ($engineParams.ContainsKey('Path')) {
-        $engineParams.Remove('Path')
-    }
-
-    # Command translation logic
     switch ($Command) {
-        'collect' {
-            $engineParams.Add('Mode', 'Collect')
-        }
-        'analyze' {
-            $engineParams.Add('Mode', 'Analyze')
-            if ($PSBoundParameters.ContainsKey('Path')) {
-                $engineParams.Add('ArchivePath', $Path)
+        'Collect' {
+            # Backend Delegation: Launcher orchestrates the backend transition for log extraction.
+            $backendEngine = Join-Path -Path $ScriptRoot -ChildPath "core\backend\engine.ps1"
+            if (-not (Test-Path $backendEngine)) { throw "Backend engine missing." }
+
+            # ArchivePath returned from backend allows for seamless frontend automation.
+            $finalArchivePath = & $backendEngine -Mode "Collect" -Language $Language -ScriptRoot $ScriptRoot
+            
+            # Post-Collection Workflow: Automatic reporting bridges the gap between raw data and insights.
+            if ($AutoReport -and $finalArchivePath -and (Test-Path $finalArchivePath)) {
+                $frontendEngine = Join-Path -Path $ScriptRoot -ChildPath "core\frontend\engine.ps1"
+                if (Test-Path $frontendEngine) {
+                    & $frontendEngine -Mode "Analysis" -ArchivePath $finalArchivePath -Language $Language -ScriptRoot $ScriptRoot
+                }
             }
         }
-        'create-report' {
-            $engineParams.Add('Mode', 'Analyze')
-            $reportsDir = Join-Path -Path $PSScriptRoot -ChildPath "reports"
 
-            # Robustness: Check if reports directory exists
-            if (-not (Test-Path -Path $reportsDir -PathType Container)) {
-                throw "The 'reports' directory does not exist. Run 'lt collect' first to generate log archives."
+        'Analyze' {
+            # Frontend Delegation: Launcher hands off control for event processing and dashboard rendering.
+            $frontendEngine = Join-Path -Path $ScriptRoot -ChildPath "core\frontend\engine.ps1"
+            if (-not (Test-Path $frontendEngine)) { throw "Frontend engine missing." }
+
+            $engineParams = @{ Mode = "Analysis"; Language = $Language; ScriptRoot = $ScriptRoot }
+            if ($ArchivePath) { $engineParams.Add('ArchivePath', $ArchivePath) }
+            if ($IncludeEventId) { $engineParams.Add('IncludeEventId', $IncludeEventId) }
+            if ($Keyword) { $engineParams.Add('Keyword', $Keyword) }
+
+            & $frontendEngine @engineParams
+        }
+
+        'Report' {
+            # Forensic Mode: Specifically designed for exporting results to a target path without UI noise.
+            if (-not $ArchivePath -or -not $OutputPath) {
+                Write-Status -Level ERROR -Message "Usage: .\lt.ps1 Report -ArchivePath <path> -OutputPath <path>"
+                return
             }
 
-            $latestArchive = Get-ChildItem -Path $reportsDir -Filter "*.zip" -Recurse | Sort-Object LastWriteTime -Descending | Select-Object -First 1
-            if (-not $latestArchive) { throw "Could not find any log archives in '$reportsDir'. Run 'lt collect' first." }
+            $frontendEngine = Join-Path -Path $ScriptRoot -ChildPath "core\frontend\engine.ps1"
+            if (-not (Test-Path $frontendEngine)) { throw "Frontend engine missing." }
 
-            Write-Host "[INFO] Automatically selected the latest archive for reporting: $($latestArchive.FullName)" -ForegroundColor Cyan
-            $engineParams.Add('ArchivePath', $latestArchive.FullName)
-
-            # --- INTELLIGENT PATHING ---
-            $engineParams.Add('OutputPath', (Get-IntelligentReportPath -ArchiveItem $latestArchive))
-        }
-        'create-report-from' {
-            $engineParams.Add('Mode', 'Analyze')
-            if (-not $PSBoundParameters.ContainsKey('Path')) { throw "This command requires a path to a log archive. Usage: lt create-report-from <path\to\archive.zip>" }
-
-            $archiveInfo = Get-Item -LiteralPath $Path -ErrorAction Stop
-            $engineParams.Add('ArchivePath', $archiveInfo.FullName)
-
-            # --- INTELLIGENT PATHING ---
-            $engineParams.Add('OutputPath', (Get-IntelligentReportPath -ArchiveItem $archiveInfo))
+            & $frontendEngine -Mode "Analysis" -ArchivePath $ArchivePath -OutputPath $OutputPath -Language $Language -ScriptRoot $ScriptRoot
         }
     }
-
-    & $engineScriptPath @engineParams
-
-} catch {
-    Write-Error "A critical error occurred in the launcher: $($_.Exception.Message)"
+}
+catch {
+    Write-Status -Level ERROR -Message "ORCHESTRATION FAILURE: $($_.Exception.Message)"
     exit 1
 }
