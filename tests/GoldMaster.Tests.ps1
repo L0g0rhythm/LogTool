@@ -3,6 +3,7 @@
 # Framework: Pester 3.4.0 (AEGIS Purified)
 #
 
+Import-Module Pester -RequiredVersion 3.4.0 -Force
 $Root = Split-Path -Parent $PSScriptRoot
 Import-Module (Join-Path $Root "core/shared/modules/Shared.psm1") -Force
 Import-Module (Join-Path $Root "core/backend/modules/Collection.psm1") -Force
@@ -80,4 +81,5 @@ Describe "LogTool v28.1.7: GOLD MASTER (Purified)" {
     # Manual anchoring of variables to satisfy PSScriptAnalyzer (M21 conformance).
     $null = $T; $null = $ReportsDir; $null = $St; $null = $Cfg
 }
+
 

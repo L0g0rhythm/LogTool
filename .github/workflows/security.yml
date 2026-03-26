@@ -69,13 +69,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install Pester
+      - name: Force Pester 3.4.0 and Run Tests
         shell: pwsh
-        run: Install-Module Pester -RequiredVersion 3.4.0 -Force -Scope CurrentUser -SkipPublisherCheck
-
-      - name: Run Pester — Fail on any test failure
-        shell: pwsh
-        run: Invoke-Pester -Path "./tests" -OutputFormat NUnitXml -OutputFile "TestResults.xml" -EnableExit
+        run: |
+          # Aggressively remove pre-installed Pester 5+ to prevent shadowing
+          $p5 = Get-Module Pester -ListAvailable | Where-Object { $_.Version.Major -ge 5 }
+          if ($p5) { Write-Host "Removing pre-installed Pester 5.x..."; $p5 | ForEach-Object { Remove-Item $_.ModuleBase -Recurse -Force -ErrorAction SilentlyContinue } }
+          
+          Install-Module Pester -RequiredVersion 3.4.0 -Force -Scope CurrentUser -SkipPublisherCheck
+          Import-Module Pester -RequiredVersion 3.4.0 -Force
+          Invoke-Pester -Path "./tests" -OutputFormat NUnitXml -OutputFile "TestResults.xml" -EnableExit
 
       - name: Publish Test Results
         uses: actions/upload-artifact@v4
@@ -107,4 +110,5 @@ jobs:
         with:
           name: sbom-spdx
           path: sbom.spdx.json
+
 
