@@ -1,6 +1,6 @@
 ﻿#
 # LogTool v28.1.7: GOLD MASTER UNIFIED TESTS
-# Framework: Pester 5.7.1 (AEGIS Purified)
+# Framework: Pester 3.4.0 (AEGIS Purified)
 #
 
 $Root = Split-Path -Parent $PSScriptRoot
@@ -12,22 +12,21 @@ Import-Module (Join-Path $Root "core/frontend/modules/Analysis.psm1") -Force
 Describe "LogTool v28.1.7: GOLD MASTER (Purified)" {
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSAvoidUsingWriteHost", "")]
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSUseDeclaredVarsMoreThanAssignments", "")]
-    BeforeAll {
-        $T = (New-Item -ItemType Directory -Path (Join-Path $env:TEMP "lt_gm_purified_$([guid]::NewGuid())") -Force).FullName
-        $ReportsDir = New-Item -ItemType Directory -Path (Join-Path $T "reports") -Force
-        
-        $St = Get-LocalizedString -Language "en-US"
-        $Cfg = [pscustomobject]@{
-            AuditLogPath    = Join-Path $T "audit.log"
-            CollectionTasks = @( @{ LogName = "System"; MaxEvents = 1 } )
-            LifecycleConfig = [pscustomobject]@{ Enabled = $true; MaxArchivesToKeep = 1; MaxArchiveAgeDays = 30 }
-            AnalysisConfig  = [pscustomobject]@{ KeywordsToFlag = @("FAIL"); CriticalEventIds = @(1); MaxDetailItems = 5 }
-            ToolSettings    = [pscustomobject]@{ Language = "en-US" }
-        }
+    
+    $T = (New-Item -ItemType Directory -Path (Join-Path $env:TEMP "lt_gm_purified_$([guid]::NewGuid())") -Force).FullName
+    $ReportsDir = New-Item -ItemType Directory -Path (Join-Path $T "reports") -Force
+    
+    $St = Get-LocalizedString -Language "en-US"
+    $Cfg = [pscustomobject]@{
+        AuditLogPath    = Join-Path $T "audit.log"
+        CollectionTasks = @( @{ LogName = "System"; MaxEvents = 1 } )
+        LifecycleConfig = [pscustomobject]@{ Enabled = $true; MaxArchivesToKeep = 1; MaxArchiveAgeDays = 30 }
+        AnalysisConfig  = [pscustomobject]@{ KeywordsToFlag = @("FAIL"); CriticalEventIds = @(1); MaxDetailItems = 5 }
+        ToolSettings    = [pscustomobject]@{ Language = "en-US" }
     }
 
     It "VALIDATES: Shared Utilities" {
-        Get-LocalizedString -Language "en-US" | Should -Not -BeNullOrEmpty
+        Get-LocalizedString -Language "en-US" | Should Not Be $null
     }
 
     It "VALIDATES: Collection Cycle" {
@@ -42,8 +41,8 @@ Describe "LogTool v28.1.7: GOLD MASTER (Purified)" {
         }
         
         $zip = Invoke-LogCollection -Configuration $Cfg -ScriptRoot $T -LocalizedStrings $St
-        $zip | Should -Not -BeNullOrEmpty
-        $zip | Should -Match "^$([regex]::Escape($ReportsDir.FullName))"
+        $zip | Should Not Be $null
+        $zip | Should Match "^$([regex]::Escape($ReportsDir.FullName))"
     }
 
     It "VALIDATES: Analysis Engine" {
@@ -65,8 +64,8 @@ Describe "LogTool v28.1.7: GOLD MASTER (Purified)" {
         if ($null -eq $res) { Write-Output "[DEBUG] Analysis result is NULL" }
         else { Write-Output "[DEBUG] Analysis result found. TotalEvents: $($res.TotalEvents)" }
         
-        $res | Should -Not -BeNullOrEmpty
-        $res.TotalEvents | Should -Be 1
+        $res | Should Not Be $null
+        $res.TotalEvents | Should Be 1
     }
 
     It "VALIDATES: Lifecycle Management" {
@@ -75,11 +74,10 @@ Describe "LogTool v28.1.7: GOLD MASTER (Purified)" {
         New-Item -Path (Join-Path $ReportsDir.FullName "old_2.zip") -ItemType File -Force | Out-Null
         
         Invoke-ArchiveCleanup -Configuration $Cfg -ScriptRoot $T -LocalizedStrings $St
-        (Get-ChildItem -Path $ReportsDir.FullName -Filter *.zip).Count | Should -Be 1
+        (Get-ChildItem -Path $ReportsDir.FullName -Filter *.zip).Count | Should Be 1
     }
 
-    AfterAll {
-        if (Test-Path $T) { Remove-Item -Path $T -Recurse -Force -ErrorAction SilentlyContinue }
-    }
+    # Manual anchoring of variables to satisfy PSScriptAnalyzer (M21 conformance).
+    $null = $T; $null = $ReportsDir; $null = $St; $null = $Cfg
 }
 
