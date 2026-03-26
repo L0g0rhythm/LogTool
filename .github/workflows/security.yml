@@ -78,14 +78,15 @@ jobs:
           # Use local side-loading to bypass platform version pollution
           Save-Module -Name Pester -RequiredVersion 3.4.0 -Path "./pester_legacy" -ErrorAction SilentlyContinue
           
-          # Force absolute path import to break Pester 5.x shadowing
-          $psm1 = Get-ChildItem -Path "./pester_legacy" -Filter Pester.psm1 -Recurse | Select-Object -First 1
-          if ($null -eq $psm1) { throw "FAIL: Pester 3.4.0 side-load failed. Workspace state corrupted." }
-          Import-Module $psm1.FullName -Force
+          # Force absolute path import to break Pester 5.x shadowing (Use Manifest for correct versioning)
+          $psd1 = Get-ChildItem -Path "./pester_legacy" -Filter Pester.psd1 -Recurse | Select-Object -First 1
+          if ($null -eq $psd1) { throw "FAIL: Pester 3.4.0 side-load failed. Workspace state corrupted." }
+          Import-Module $psd1.FullName -Force
           
           # Heartbeat: Confirm version before execution
-          $version = (Get-Module Pester).Version
-          Write-Host "CRITICAL: Using Pester version $version" -ForegroundColor Cyan
+          $p = Get-Module Pester
+          $version = $p.Version
+          Write-Host "CRITICAL: Using Pester version $version from $($p.Path)" -ForegroundColor Cyan
           if ($version.Major -ne 3) { throw "FAIL: Pester 5 shadowing detected. M17 Isolation breached." }
           
           Invoke-Pester -Path "./tests" -OutputFormat NUnitXml -OutputFile "TestResults.xml" -EnableExit
@@ -120,6 +121,7 @@ jobs:
         with:
           name: sbom-spdx
           path: sbom.spdx.json
+
 
 
 
