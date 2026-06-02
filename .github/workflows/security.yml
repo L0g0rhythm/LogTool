@@ -1,0 +1,124 @@
+# LogTool CI/CD Security Pipeline (AEGIS APEX — M17 v28.2.0)
+# Triggers: Push to main/develop, all Pull Requests
+# Gates: Secret scan → PSScriptAnalyzer → Pester tests → SBOM
+
+name: Security & Quality Gate
+
+on:
+  push:
+    branches: [ "main", "develop" ]
+  pull_request:
+    branches: [ "main" ]
+
+permissions:
+  contents: read
+
+jobs:
+  # ─────────────────────────────────────────────
+  # Gate 1: Secret Scan (M17 — pre-merge, fail-fast)
+  # ─────────────────────────────────────────────
+  secret-scan:
+    name: Secret Scan (GitLeaks)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+
+      # ISSUE-005 FIX: Pin by SHA — prevents tag mutation attacks (M17).
+      - name: Run GitLeaks
+        uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2.3.9 — TODO: migrate to v3 before 2026-09-16
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ─────────────────────────────────────────────
+  # Gate 2: Static Analysis (PSScriptAnalyzer)
+  # ─────────────────────────────────────────────
+  static-analysis:
+    name: PSScriptAnalyzer
+    runs-on: windows-latest
+    needs: secret-scan
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Install PSScriptAnalyzer
+        shell: pwsh
+        run: Install-Module PSScriptAnalyzer -Force -Scope CurrentUser
+
+      - name: Run PSScriptAnalyzer — Error on violations
+        shell: pwsh
+        run: |
+          $results = Invoke-ScriptAnalyzer -Path . -Recurse -Severity Error, Warning
+          if ($results) {
+            $results | Format-Table -AutoSize
+            Write-Error "PSScriptAnalyzer found $($results.Count) violation(s). Build blocked."
+            exit 1
+          }
+          Write-Host "PSScriptAnalyzer: No violations found." -ForegroundColor Green
+
+  # ─────────────────────────────────────────────
+  # Gate 3: Pester Test Suite (M21)
+  # ─────────────────────────────────────────────
+  pester-tests:
+    name: Pester Test Suite
+    runs-on: windows-latest
+    needs: static-analysis
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Side-load Pester 3.4.0 and Run Tests
+        shell: powershell
+        run: |
+          # Ensure destination exists (M17 Isolation Infrastructure)
+          if (-not (Test-Path "./pester_legacy")) { New-Item -ItemType Directory -Path "./pester_legacy" -Force }
+          
+          # Use local side-loading to bypass platform version pollution
+          Save-Module -Name Pester -RequiredVersion 3.4.0 -Path "./pester_legacy" -ErrorAction SilentlyContinue
+          
+          # Force absolute path import to break Pester 5.x shadowing (Use Manifest for correct versioning)
+          $psd1 = Get-ChildItem -Path "./pester_legacy" -Filter Pester.psd1 -Recurse | Select-Object -First 1
+          if ($null -eq $psd1) { throw "FAIL: Pester 3.4.0 side-load failed. Workspace state corrupted." }
+          Import-Module $psd1.FullName -Force
+          
+          # Heartbeat: Confirm version before execution
+          $p = Get-Module Pester
+          $version = $p.Version
+          Write-Host "CRITICAL: Using Pester version $version from $($p.Path)" -ForegroundColor Cyan
+          if ($version.Major -ne 3) { throw "FAIL: Pester 5 shadowing detected. M17 Isolation breached." }
+          
+          Invoke-Pester -Path "./tests" -OutputFormat NUnitXml -OutputFile "TestResults.xml" -EnableExit
+
+      - name: Publish Test Results
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: pester-test-results
+          path: TestResults.xml
+
+  # ─────────────────────────────────────────────
+  # Gate 4: SBOM Generation (M17 — deploy readiness)
+  # ─────────────────────────────────────────────
+  sbom:
+    name: Generate SBOM
+    runs-on: ubuntu-latest
+    needs: pester-tests
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Generate SBOM (CycloneDX / SPDX)
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
+        with:
+          format: spdx-json
+          output-file: sbom.spdx.json
+
+      - name: Upload SBOM Artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: sbom-spdx
+          path: sbom.spdx.json
+
